@@ -12,3 +12,24 @@ jobs:
       - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
       - run: docker build -t cygnetops/react-test -f Dockerfile.dev .
       - run: docker run -e CI=true cygnetops/react-test npm test
+
+      - name: Prepare deploy package
+        run: zip -r deploy.zip . -x "*.git*" "node_modules/*"
+
+      # Step 4: Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+
+      # Step 5: Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          application_name: frontend-3
+          environment_name: Frontend-3-env
+          existing_bucket_name: elasticbeanstalk-eu-north-1-518890434707
+          region: eu-north-1
+          version_label: ${{ github.sha }}
+          deployment_package: deploy.zip
