@@ -10,45 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the repository
+      # 1️⃣ Checkout your code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Log in to Docker Hub
-      - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-      # 3️⃣ Build and push the Docker image
-      - name: Build and push Docker image
+      # 2️⃣ Install dependencies and build the React app
+      - name: Install dependencies and build
         run: |
-          IMAGE_NAME=cygnetops/react-test
-          IMAGE_TAG=${{ github.sha }}
-          docker build -t $IMAGE_NAME:$IMAGE_TAG -f Dockerfile .
-          docker push $IMAGE_NAME:$IMAGE_TAG
+          npm ci
+          npm run build
 
-      # 4️⃣ Create Dockerrun.aws.json file for Elastic Beanstalk
-      - name: Create Dockerrun.aws.json
+      # 3️⃣ Create a clean deployment package
+      - name: Generate deployment package
         run: |
-          IMAGE_NAME=cygnetops/react-test
-          IMAGE_TAG=${{ github.sha }}
-          cat > Dockerrun.aws.json <<EOF
-          {
-            "AWSEBDockerrunVersion": 1,
-            "Image": {
-              "Name": "$IMAGE_NAME:$IMAGE_TAG",
-              "Update": "true"
-            },
-            "Ports": [
-              { "ContainerPort": "80" }
-            ]
-          }
-          EOF
+          # Only include files needed for Docker build and deployment
+          zip -r deploy.zip Dockerfile nginx.conf build/ package.json package-lock.json
 
-      # 5️⃣ Zip the Dockerrun file for deployment
-      - name: Zip Dockerrun file
-        run: zip deploy.zip Dockerrun.aws.json
-
-      # 6️⃣ Deploy to Elastic Beanstalk
+      # 4️⃣ Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v21
         with:
