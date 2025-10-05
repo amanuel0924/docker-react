@@ -6,34 +6,32 @@ on:
       - master
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your code
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      # 2️⃣ Install dependencies and build the React app
-      - name: Install dependencies and build
-        run: |
-          npm ci
-          npm run build
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3️⃣ Create a clean deployment package
+      - name: Build Docker image
+        run: docker build -t cygnetops/react-test -f Dockerfile.dev .
+
+      - name: Run tests
+        run: docker run -e CI=true cygnetops/react-test npm test
+
       - name: Generate deployment package
-        run: |
-          # Only include files needed for Docker build and deployment
-          zip -r deploy.zip Dockerfile nginx.conf build/ package.json package-lock.json
+        run: zip -r deploy.zip . -x '*.git*'
 
-      # 4️⃣ Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v21
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
           aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
-          application_name: frontend
-          environment_name: Frontend-env
+          application_name: frontend-2
+          environment_name: Frontend-2-env
           existing_bucket_name: elasticbeanstalk-eu-north-1-518890434707
           region: eu-north-1
           version_label: ${{ github.sha }}
